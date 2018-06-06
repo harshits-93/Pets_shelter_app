@@ -110,6 +110,7 @@ public class PetsProvider extends ContentProvider {
             default:
                 throw new IllegalArgumentException("Cannot query unknown URI " + uri);
         }
+        cursor.setNotificationUri(getContext().getContentResolver(), uri);
         return cursor;
     }
 
@@ -125,6 +126,7 @@ public class PetsProvider extends ContentProvider {
             default:
                 throw new IllegalArgumentException("Insertion is not supported for " + uri);
         }
+
     }
 
     /**
@@ -164,6 +166,8 @@ public class PetsProvider extends ContentProvider {
             Log.e(LOG_TAG, "Failed to insert row for " + uri);
             return null;
         }
+
+        getContext().getContentResolver().notifyChange(uri, null);
         // Once we know the ID of the new row in the table,
         // return the new URI with the ID appended to the end of it
         return ContentUris.withAppendedId(uri, rowId);
@@ -234,10 +238,16 @@ public class PetsProvider extends ContentProvider {
         SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
         //Updating one or more rows based on the case selected.And calling sqlite's update method
-        int rowIdUpdated = db.update(PetsContract.PetsEntry.TABLE_NAME, values, selection, selectionArgs);
+        int rowsUpdated = db.update(PetsContract.PetsEntry.TABLE_NAME, values, selection, selectionArgs);
+
+        // If 1 or more rows were updated, then notify all listeners that the data at the
+        // given URI has changed
+        if (rowsUpdated != 0) {
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
 
         // TODO: Return the number of rows that were affected
-        return rowIdUpdated;
+        return rowsUpdated;
     }
 
 
@@ -267,8 +277,15 @@ public class PetsProvider extends ContentProvider {
         // Get writable database
         SQLiteDatabase database = mDbHelper.getWritableDatabase();
 
-        int rowIdsDeleted = database.delete(PetsContract.PetsEntry.TABLE_NAME, selection, selectionArgs);
-        return rowIdsDeleted;
+        int rowsDeleted = database.delete(PetsContract.PetsEntry.TABLE_NAME, selection, selectionArgs);
+
+        // If 1 or more rows were updated, then notify all listeners that the data at the
+        // given URI has changed
+        if (rowsDeleted != 0) {
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
+
+        return rowsDeleted;
     }
 
     /**
